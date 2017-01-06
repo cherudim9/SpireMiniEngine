@@ -2,11 +2,28 @@
 #include "CoreLib/Tokenizer.h"
 #include "CoreLib/LibIO.h"
 #include "CoreLib/VectorMath.h"
+#include <iostream>
 
 using namespace CoreLib::Basic;
 using namespace CoreLib::IO;
 using namespace CoreLib::Text;
 using namespace VectorMath;
+
+Matrix4 FlipYZ(const Matrix4 & v)
+{
+	Matrix4 rs = v;
+	for (int i = 0; i < 4; i++)
+	{
+		rs.m[1][i] = v.m[2][i];
+		rs.m[2][i] = -v.m[1][i];
+	}
+	for (int i = 0; i < 4; i++)
+	{
+		Swap(rs.m[i][1], rs.m[i][2]);
+		rs.m[i][2] = -rs.m[i][2];
+	}
+	return rs;
+}
 
 String ExtractField(const String & src, const String & fieldName)
 {
@@ -119,16 +136,16 @@ int wmain(int argc, const wchar_t ** argv)
 			parser.ReadToken().Content == "Class" &&
 			parser.ReadToken().Content == "=")
 		{
+			auto beginPos = parser.NextToken().Position;
 			if (parser.ReadToken().Content == "StaticMeshActor")
 			{
-				auto beginPos = parser.NextToken().Position;
 				while (!(parser.NextToken().Content == "End" && parser.NextToken(1).Content == "Actor"))
 				{
 					parser.ReadToken();
 				}
 				auto endToken = parser.ReadToken();
 				auto endPos = endToken.Position;
-				auto actorStr = src.SubString(beginPos.Pos, endPos.Pos);
+				auto actorStr = src.SubString(beginPos.Pos, endPos.Pos - beginPos.Pos);
 				auto name = ExtractField(actorStr, "Name=");
 				auto mesh = ExtractField(actorStr, "StaticMesh=");
 				auto location = ExtractField(actorStr, "RelativeLocation=");
@@ -138,6 +155,7 @@ int wmain(int argc, const wchar_t ** argv)
 				sb << "StaticMesh\n{\n";
 				sb << "name \"" << name << "\"\n";
 				sb << "mesh \"" << mesh.SubString(mesh.IndexOf('.') + 1, mesh.Length() - mesh.IndexOf('.') - 3) << ".mesh\"\n";
+				std::cout << name.Buffer() << std::endl;
 				Matrix4 transform;
 				Matrix4::CreateIdentityMatrix(transform);
 				if (rotation.Length())
@@ -161,13 +179,25 @@ int wmain(int argc, const wchar_t ** argv)
 					Matrix4::Translation(matTrans, s.x, s.y, s.z);
 					Matrix4::Multiply(transform, matTrans, transform);
 				}
+				for (int i = 0; i < 4; i++)
+				{
+					auto tmp = transform.m[i][1];
+					transform.m[i][1] = transform.m[i][2];
+					transform.m[i][2] = tmp;
+					transform.m[i][1] = -transform.m[i][1];
+				}
+				//transform = FlipYZ(transform);
 				sb << "transform [";
 				for (int i = 0; i < 16; i++)
 					sb << transform.values[i] << " ";
 				sb << "]\n";
-				if (material.Length())
+				if (material.Length() && material != "None\n" && 0)
 				{
 					sb << "material \"" << material.SubString(material.IndexOf('.') + 1, material.Length() - material.IndexOf('.') - 3) << ".material\"\n";
+				}
+				else
+				{
+					sb << "material { shader \"DefaultPattern.shader\"}\n";
 				}
 				sb << "}\n";
 			}
