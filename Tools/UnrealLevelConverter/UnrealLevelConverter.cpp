@@ -119,16 +119,16 @@ int wmain(int argc, const wchar_t ** argv)
 			parser.ReadToken().Content == "Class" &&
 			parser.ReadToken().Content == "=")
 		{
+			auto beginPos = parser.NextToken().Position;
 			if (parser.ReadToken().Content == "StaticMeshActor")
 			{
-				auto beginPos = parser.NextToken().Position;
 				while (!(parser.NextToken().Content == "End" && parser.NextToken(1).Content == "Actor"))
 				{
 					parser.ReadToken();
 				}
 				auto endToken = parser.ReadToken();
 				auto endPos = endToken.Position;
-				auto actorStr = src.SubString(beginPos.Pos, endPos.Pos);
+				auto actorStr = src.SubString(beginPos.Pos, endPos.Pos - beginPos.Pos);
 				auto name = ExtractField(actorStr, "Name=");
 				auto mesh = ExtractField(actorStr, "StaticMesh=");
 				auto location = ExtractField(actorStr, "RelativeLocation=");
@@ -165,9 +165,13 @@ int wmain(int argc, const wchar_t ** argv)
 				for (int i = 0; i < 16; i++)
 					sb << transform.values[i] << " ";
 				sb << "]\n";
-				if (material.Length())
+				if (material.Length() && material != "None\n")
 				{
 					sb << "material \"" << material.SubString(material.IndexOf('.') + 1, material.Length() - material.IndexOf('.') - 3) << ".material\"\n";
+				}
+				else
+				{
+					sb << "material { shader \"DefaultPattern.shader\"}\n";
 				}
 				sb << "}\n";
 			}
