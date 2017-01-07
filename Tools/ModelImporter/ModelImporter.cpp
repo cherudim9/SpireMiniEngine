@@ -92,7 +92,8 @@ void ConvertLevelNode(StringBuilder & sb, const aiScene * scene, aiNode * node)
 class ExportArguments
 {
 public:
-	String FileName;
+	String InputFileName;
+	String OutputFileName;
 	bool ExportSkeleton = true;
 	bool ExportMesh = true;
 	bool ExportAnimation = true;
@@ -143,8 +144,8 @@ void FlipKeyFrame(BoneTransformation & kf)
 
 void Export(ExportArguments args)
 {
-	auto fileName = args.FileName;
-	auto outFileName = Path::ReplaceExt(fileName, "out");
+	auto fileName = args.InputFileName;
+	auto outFileName = args.OutputFileName;
 	printf("loading %S...\n", fileName.ToWString());
 	Assimp::Importer importer;
 	int process = aiProcess_CalcTangentSpace;
@@ -340,10 +341,7 @@ void Export(ExportArguments args)
 				auto outName = outFileName;
 				if (scene->mNumMeshes > 1)
 				{
-					String meshName = mesh->mName.C_Str();
-					if (meshName.Length() == 0)
-						meshName = "mesh_";
-					meshName = meshName + String((int)i);
+					String meshName = Path::GetFileNameWithoutEXT(outFileName) + "(" + String((int)i) + ")";
 					outName = Path::Combine(Path::GetDirectoryName(outFileName), meshName + ".mesh");
 				}
 				
@@ -518,7 +516,8 @@ public:
 					args.FlipUV = chkFlipUV->GetChecked();
 					args.FlipYZ = chkFlipYZ->GetChecked();
 					args.FlipWindingOrder = chkFlipWinding->GetChecked();
-					args.FileName = file;
+					args.InputFileName = file;
+					args.OutputFileName = Path::ReplaceExt(file, "out");
 					Export(args);
 				}
 			}
@@ -532,7 +531,9 @@ int wmain(int argc, const wchar_t** argv)
 	if (argc > 1)
 	{
 		ExportArguments args;
-		args.FileName = String::FromWString(argv[1]);
+		args.InputFileName = String::FromWString(argv[1]);
+		args.OutputFileName = String::FromWString(argv[2]);
+		args.FlipYZ = true;
 		Export(args);
 	}
 	else
