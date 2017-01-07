@@ -56,17 +56,15 @@ namespace GameEngine
 
 	PipelineClass * PipelineContext::GetPipeline(MeshVertexFormat * vertFormat)
 	{
-		auto timePoint = CoreLib::Diagnostics::PerformanceCounter::Start();
 		shaderKeyBuilder.Clear();
-		shaderKeyBuilder.Append(spShaderGetName(shader));
+		shaderKeyBuilder.Append(spShaderGetId(shader));
 		shaderKeyBuilder.Append(vertFormat->GetTypeId());
 		for (auto m : modules)
 			m->GetKey(shaderKeyBuilder);
-		char* key = shaderKeyBuilder.Buffer();
-		if (auto pipeline = pipelineObjects.TryGetValue(key))
+		if (auto pipeline = pipelineObjects.TryGetValue(shaderKeyBuilder.Key))
 		{
-			renderStats->PipelineLookupTime += CoreLib::Diagnostics::PerformanceCounter::EndSeconds(timePoint);
-			return pipeline->Ptr();
+			auto rs = pipeline->Ptr();
+			return rs;
 		}
 
 		RefPtr<PipelineBuilder> pipelineBuilder = hwRenderer->CreatePipelineBuilder();
@@ -128,9 +126,9 @@ namespace GameEngine
 			pipelineClass->shaders.Add(shaderObj);
 		}
 		
-		String keyStr = key;
+		//String keyStr = key;
+		//pipelineBuilder->SetDebugName(keyStr);
 
-		pipelineBuilder->SetDebugName(keyStr);
 		pipelineBuilder->SetShaders(From(pipelineClass->shaders).Select([](const RefPtr<Shader>& s) {return s.Ptr(); }).ToList().GetArrayView());
 		List<RefPtr<DescriptorSetLayout>> descSetLayouts;
 		for (auto & descSet : rs.BindingLayouts)
@@ -143,7 +141,7 @@ namespace GameEngine
 		}
 		pipelineBuilder->SetBindingLayout(From(descSetLayouts).Select([](auto x) {return x.Ptr(); }).ToList().GetArrayView());
 		pipelineClass->pipeline = pipelineBuilder->ToPipeline(renderTargetLayout);
-		pipelineObjects[keyStr] = pipelineClass;
+		pipelineObjects[shaderKeyBuilder.Key] = pipelineClass;
 		return pipelineClass.Ptr();
 	}
 
